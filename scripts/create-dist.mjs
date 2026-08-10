@@ -130,7 +130,22 @@ async function main() {
   const serverSource = rootServerSource
     .replace("module.createRequire(import.meta.url)", 'module.createRequire(path.join(process.cwd(), "server.js"))')
     .replace("fileURLToPath(new URL('.', import.meta.url))", "process.cwd()");
-  await writeFile(path.join(distServerDir, "server.js"), serverSource);
+  const bundleAlias = `
+const bundleNextPath = path.join(__dirname, "bundle", "next.js")
+const originalResolveFilename = module._resolveFilename
+module._resolveFilename = function (request, parent, isMain, options) {
+  if (request === "bundle/next") {
+    return bundleNextPath
+  }
+
+  return originalResolveFilename.call(this, request, parent, isMain, options)
+}
+`;
+  const aliasedServerSource = serverSource.replace(
+    "const dir = path.join(__dirname)\n",
+    `const dir = path.join(__dirname)\n${bundleAlias}\n`
+  );
+  await writeFile(path.join(distServerDir, "server.js"), aliasedServerSource);
   await writeFile(
     path.join(distServerDir, "index.js"),
     `await import("./server.js");
