@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { createBalanceRequest } from "@/app/profiel/actions";
 import { PageShell } from "@/components/page-shell";
+import { getMemberBalanceRequests, type BalanceRequestRow } from "@/lib/supabase/balance-requests";
 import { requireViewer } from "@/lib/supabase/auth";
 import { SaldoActions } from "./saldo-actions";
 
@@ -59,17 +60,27 @@ export default async function ProfielPage({ searchParams }: ProfielPageProps) {
     supabase.from("balance_adjustments").select("member_id, amount")
   ]);
 
+  const balanceRequests = await getMemberBalanceRequests(supabase, member.id);
+
   const totalMembers = members?.length ?? 0;
   const activeMembers = members?.filter((item) => item.is_active).length ?? 0;
   const effectiveAdjustments = isMissingBalanceAdjustmentsTableError(balanceAdjustmentsError)
     ? []
     : balanceAdjustments ?? [];
+  const memberBalanceRequests = (balanceRequests ?? []) as BalanceRequestRow[];
   const ownContributions = contributions?.filter((item) => item.member_id === member.id) ?? [];
   const ownAdjustments = effectiveAdjustments.filter((item) => item.member_id === member.id);
+  const openBalanceRequest = memberBalanceRequests.find((request) => request.status === "open") ?? null;
+  const latestBalanceRequest = memberBalanceRequests[0] ?? null;
   const ownBalance =
     ownContributions.reduce((sum, item) => sum + Number(item.amount), 0) +
     ownAdjustments.reduce((sum, item) => sum + Number(item.amount), 0);
   const lastContributionDate = ownContributions[0]?.contribution_date ?? null;
+  const balanceRequestStatusMessage = openBalanceRequest
+    ? `Open verzoek: ${openBalanceRequest.request_type === "storten" ? "geld storten" : "uitbetalen"}${openBalanceRequest.amount != null ? ` voor ${formatEuro(Number(openBalanceRequest.amount))}` : ""}. Je kunt een nieuw verzoek pas doen nadat beheer dit heeft afgehandeld.`
+    : latestBalanceRequest
+      ? `Laatste verzoek: ${latestBalanceRequest.request_type === "storten" ? "geld storten" : "uitbetalen"}${latestBalanceRequest.amount != null ? ` voor ${formatEuro(Number(latestBalanceRequest.amount))}` : ""} is afgehandeld.`
+      : "Nog geen saldoverzoeken gedaan.";
 
   return (
     <PageShell title="Profiel" subtitle="Jouw account, toegang en snelle acties.">
@@ -125,7 +136,11 @@ export default async function ProfielPage({ searchParams }: ProfielPageProps) {
             <p className="text-xs uppercase tracking-wide text-slate-500">Jouw saldo</p>
             <p className="mt-1 text-xl font-semibold text-slate-900">{formatEuro(ownBalance)}</p>
           </div>
-          <SaldoActions action={createBalanceRequest} />
+          <SaldoActions
+            action={createBalanceRequest}
+            disabled={Boolean(openBalanceRequest)}
+            statusMessage={balanceRequestStatusMessage}
+          />
         </div>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <div className="rounded-xl bg-slate-50 p-3">

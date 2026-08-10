@@ -3,23 +3,31 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { getOpenMemberBalanceRequest } from "@/lib/supabase/balance-requests";
 import { getMemberBalance } from "@/lib/supabase/balance";
 import { requireViewer } from "@/lib/supabase/auth";
 
 export async function createBalanceRequest(formData: FormData): Promise<void> {
   const requestType = String(formData.get("request_type") ?? "").trim();
   const amountRaw = String(formData.get("amount") ?? "").trim();
-  const amount = Number(amountRaw);
 
   if (requestType !== "storten" && requestType !== "uitbetalen") {
     redirect("/profiel?error=Ongeldige%20melding.");
   }
 
+  const { supabase, member } = await requireViewer();
+  const openRequest = await getOpenMemberBalanceRequest(supabase, member.id);
+
+  if (openRequest) {
+    redirect("/profiel?error=Je%20hebt%20al%20een%20open%20saldoverzoek.%20Wacht%20tot%20beheer%20dit%20heeft%20afgehandeld.");
+  }
+
+  const amount = Number(amountRaw);
+
   if (!Number.isFinite(amount) || amount <= 0) {
     redirect("/profiel?error=Geef%20een%20geldig%20bedrag%20in.");
   }
 
-  const { supabase, member } = await requireViewer();
   const currentBalance = await getMemberBalance(supabase, member.id);
 
   if (requestType === "uitbetalen" && amount > currentBalance) {

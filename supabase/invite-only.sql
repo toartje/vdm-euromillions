@@ -81,6 +81,9 @@ alter table public.balance_requests
 
 create index if not exists balance_requests_member_id_idx on public.balance_requests (member_id);
 create index if not exists balance_requests_status_idx on public.balance_requests (status);
+create unique index if not exists balance_requests_one_open_per_member_idx
+  on public.balance_requests (member_id)
+  where status = 'open';
 
 alter table public.balance_requests enable row level security;
 
