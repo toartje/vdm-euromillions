@@ -146,6 +146,31 @@ function formatWinningStars(stars: number[] | null | undefined) {
   return stars.join(", ");
 }
 
+function TrekkingPhotoCard({
+  title,
+  imageUrl,
+  emptyLabel
+}: {
+  title: string;
+  imageUrl: string | null | undefined;
+  emptyLabel: string;
+}) {
+  return (
+    <div className="rounded-xl bg-slate-50 p-3">
+      <p className="text-xs uppercase tracking-wide text-slate-500">{title}</p>
+      {imageUrl ? (
+        <img
+          src={imageUrl}
+          alt={title}
+          className="mt-2 h-44 w-full rounded-xl object-cover"
+        />
+      ) : (
+        <p className="mt-2 text-sm text-slate-600">{emptyLabel}</p>
+      )}
+    </div>
+  );
+}
+
 export default async function TrekkingenPage({ searchParams }: TrekkingenPageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const { member, supabase } = await requireViewer();
@@ -290,6 +315,26 @@ export default async function TrekkingenPage({ searchParams }: TrekkingenPagePro
         </div>
       </section>
 
+      <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+        <p className="text-sm font-semibold text-slate-900">Trekkingfoto&apos;s</p>
+        <p className="mt-1 text-sm text-slate-600">
+          Hier zie je de foto van de aangekochte lotjes en de foto van de lotjes bij uitbetaling.
+        </p>
+
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <TrekkingPhotoCard
+            title="Aangekochte lotjes"
+            imageUrl={trekking?.bought_ticket_image_url}
+            emptyLabel="Nog geen foto toegevoegd."
+          />
+          <TrekkingPhotoCard
+            title="Lotjes bij uitbetaling"
+            imageUrl={trekking?.payout_ticket_image_url}
+            emptyLabel="Nog geen foto toegevoegd."
+          />
+        </div>
+      </section>
+
       {isAdmin ? (
         <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
           <p className="text-sm font-semibold text-slate-900">Beheer: trekking sluiten</p>
@@ -399,7 +444,7 @@ export default async function TrekkingenPage({ searchParams }: TrekkingenPagePro
               Voeg hier een foto toe van de aangekochte lotjes of van de lotjes bij uitbetaling.
             </p>
 
-            <form action={saveTrekkingPhotos} className="mt-3 space-y-3">
+            <form action={saveTrekkingPhotos} encType="multipart/form-data" className="mt-3 space-y-3">
               <input type="hidden" name="draw_date" value={selectedDateKey} />
               <input type="hidden" name="weekday" value={weekdayLabel} />
               <input
