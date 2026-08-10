@@ -12,8 +12,10 @@ const publicDir = path.join(rootDir, "public");
 const openAiDir = path.join(rootDir, ".openai");
   const rootBundleDir = path.join(rootDir, "bundle");
   const distNextDir = path.join(distDir, "node_modules", "next");
-  const distServerNodeModulesDir = path.join(distDir, "server", "node_modules");
+const distServerNodeModulesDir = path.join(distDir, "server", "node_modules");
 
+// The deployed Sites runtime resolves "bundle/next" as a package subpath,
+// so the staging archive needs a real bundle package with that export.
 const bundlePackageJson = JSON.stringify(
   {
     name: "bundle",
