@@ -97,6 +97,31 @@ async function main() {
   if (await exists(distNextDir)) {
     await mkdir(path.join(distServerNodeModulesDir, "next"), { recursive: true });
     await cp(distNextDir, path.join(distServerNodeModulesDir, "next"), { recursive: true });
+
+    const nestedBundleShimDirs = [
+      path.join(distDir, "node_modules", "next", "node_modules", "bundle", "next"),
+      path.join(distDir, "server", "node_modules", "next", "node_modules", "bundle", "next")
+    ];
+    for (const nestedBundleShimDir of nestedBundleShimDirs) {
+      await mkdir(nestedBundleShimDir, { recursive: true });
+      await writeFile(
+        path.join(nestedBundleShimDir, "package.json"),
+        JSON.stringify(
+          {
+            name: "bundle-next-shim",
+            private: true,
+            main: "./index.js",
+          },
+          null,
+          2
+        )
+      );
+      await writeFile(
+        path.join(nestedBundleShimDir, "index.js"),
+        `module.exports = require("next");
+`
+      );
+    }
   }
 
   const distServerDir = path.join(distDir, "server");
