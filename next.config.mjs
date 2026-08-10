@@ -6,7 +6,12 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   outputFileTracingRoot: __dirname,
-  output: "standalone"
+  output: "standalone",
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "10mb"
+    }
+  }
 };
 
 export default nextConfig;
