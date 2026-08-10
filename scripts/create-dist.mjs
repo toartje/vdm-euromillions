@@ -15,7 +15,8 @@ const openAiDir = path.join(rootDir, ".openai");
 const distServerNodeModulesDir = path.join(distDir, "server", "node_modules");
 
 // The deployed Sites runtime resolves "bundle/next" as a package subpath,
-// so the staging archive needs a real bundle package with that export.
+// so the staging archive needs a real bundle package with that export and
+// the root entrypoint must start the generated server directly.
 const bundlePackageJson = JSON.stringify(
   {
     name: "bundle",
