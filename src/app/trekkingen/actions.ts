@@ -1,7 +1,5 @@
 "use server";
 
-import crypto from "node:crypto";
-
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -38,11 +36,11 @@ async function uploadTrekkingPhoto(
 
   const extension = getFileExtension(fileEntry.name);
   const filePath = `trekkingen/${drawDate}/${kind}-${crypto.randomUUID()}.${extension}`;
-  const buffer = Buffer.from(await fileEntry.arrayBuffer());
+  const fileData = new Uint8Array(await fileEntry.arrayBuffer());
 
   const { error: uploadError } = await supabase.storage
     .from("trekking-fotos")
-    .upload(filePath, buffer, {
+    .upload(filePath, fileData, {
       contentType: fileEntry.type || "image/jpeg",
       upsert: true
     });
