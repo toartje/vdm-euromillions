@@ -10,7 +10,9 @@ const standaloneDir = path.join(rootDir, ".next", "standalone");
 const staticDir = path.join(rootDir, ".next", "static");
 const publicDir = path.join(rootDir, "public");
 const openAiDir = path.join(rootDir, ".openai");
-const rootBundleDir = path.join(rootDir, "bundle");
+  const rootBundleDir = path.join(rootDir, "bundle");
+  const distNextDir = path.join(distDir, "node_modules", "next");
+  const distServerNodeModulesDir = path.join(distDir, "server", "node_modules");
 
 async function exists(targetPath) {
   try {
@@ -90,6 +92,11 @@ async function main() {
       `module.exports = require("next");
 `
     );
+  }
+
+  if (await exists(distNextDir)) {
+    await mkdir(path.join(distServerNodeModulesDir, "next"), { recursive: true });
+    await cp(distNextDir, path.join(distServerNodeModulesDir, "next"), { recursive: true });
   }
 
   const distServerDir = path.join(distDir, "server");
