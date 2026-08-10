@@ -45,14 +45,6 @@ type ParticipationRow = {
   left_at: string | null;
 };
 
-type MemberRow = {
-  id: string;
-  full_name: string;
-  email: string | null;
-  role: "beheerder" | "lid";
-  is_active: boolean;
-};
-
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("nl-BE", {
     weekday: "long",
@@ -197,16 +189,6 @@ export default async function TrekkingenPage({ searchParams }: TrekkingenPagePro
   const playingCount = participationRows.filter((row) => row.is_playing).length;
   const participationLocked = (trekking?.status ?? "open") !== "open";
 
-  const membersResult = await supabase
-    .from("members")
-    .select("id, full_name, email, role, is_active")
-    .order("created_at", { ascending: false });
-
-  if (membersResult.error) {
-    throw membersResult.error;
-  }
-
-  const visibleMembers = (membersResult.data ?? []) as MemberRow[];
   const currentPrize = trekking?.total_prize == null ? null : Number(trekking.total_prize);
 
   return (
@@ -574,48 +556,6 @@ export default async function TrekkingenPage({ searchParams }: TrekkingenPagePro
           </div>
         </section>
       ) : null}
-
-      <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
-        <p className="text-sm font-semibold text-slate-900">Deelnemers</p>
-        <p className="mt-1 text-sm text-slate-600">
-          {playingCount} van {visibleMembers.length} leden spelen mee.
-        </p>
-        <div className="mt-3 space-y-2">
-          {visibleMembers.length ? (
-            visibleMembers.map((visibleMember) => {
-              const participation = participationByMemberId.get(visibleMember.id);
-              const isPlaying = participation?.is_playing ?? false;
-
-              return (
-                <div
-                  key={visibleMember.id}
-                  className="flex items-center gap-3 rounded-xl bg-slate-50 p-3"
-                >
-                  <span
-                    className={[
-                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold",
-                      isPlaying ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-400"
-                    ].join(" ")}
-                    aria-hidden="true"
-                  >
-                    {isPlaying ? "✓" : "•"}
-                  </span>
-
-                  <div className="min-w-0">
-                    <p className="font-medium text-slate-900">{visibleMember.full_name}</p>
-                    <p className="text-xs text-slate-500">
-                      {visibleMember.email ?? "Geen e-mail"} ·{" "}
-                      {isPlaying ? "Speelt mee" : "Speelt niet mee"}
-                    </p>
-                  </div>
-                </div>
-              );
-            })
-          ) : (
-            <p className="text-sm text-slate-600">Er staan nog geen leden in de database.</p>
-          )}
-        </div>
-      </section>
 
       <section className="grid gap-3">
         <Link
