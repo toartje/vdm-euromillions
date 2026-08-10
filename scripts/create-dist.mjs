@@ -16,7 +16,8 @@ const distServerNodeModulesDir = path.join(distDir, "server", "node_modules");
 
 // The deployed Sites runtime resolves "bundle/next" as a package subpath,
 // so the staging archive needs a real bundle package with that export and
-// the root entrypoint must start the generated server directly.
+// the root entrypoint must start the generated server directly. The root
+// shim now imports `./server.js` directly.
 const bundlePackageJson = JSON.stringify(
   {
     name: "bundle",
