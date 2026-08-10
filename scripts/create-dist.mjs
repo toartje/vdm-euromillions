@@ -30,7 +30,6 @@ async function main() {
   await mkdir(distDir, { recursive: true });
 
   await cp(standaloneDir, distDir, { recursive: true });
-  await rm(path.join(distDir, "node_modules", "next"), { recursive: true, force: true });
 
   const rootShimDirs = [
     rootBundleDir,
