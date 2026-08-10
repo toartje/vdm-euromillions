@@ -200,7 +200,6 @@ export default async function TrekkingenPage({ searchParams }: TrekkingenPagePro
   const membersResult = await supabase
     .from("members")
     .select("id, full_name, email, role, is_active")
-    .eq("is_active", true)
     .order("created_at", { ascending: false });
 
   if (membersResult.error) {

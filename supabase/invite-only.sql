@@ -132,15 +132,14 @@ drop policy if exists "members can read trekkings" on public.trekkings;
 drop policy if exists "admin can manage trekkings" on public.trekkings;
 drop policy if exists "members can read own trekking participations" on public.trekking_participations;
 drop policy if exists "admin can read all trekking participations" on public.trekking_participations;
+drop policy if exists "members can read all member rows" on public.members;
+drop policy if exists "members can read all trekking participations" on public.trekking_participations;
 
-create policy "members can read active member rows"
+create policy "members can read all member rows"
 on public.members
 for select
 to authenticated
-using (
-  is_active = true
-  or is_admin()
-);
+using (true);
 
 create policy "admin can manage members"
 on public.members
@@ -248,18 +247,11 @@ to authenticated
 using (is_admin())
 with check (is_admin());
 
-create policy "members can read active trekking participations"
+create policy "members can read all trekking participations"
 on public.trekking_participations
 for select
 to authenticated
-using (
-  exists (
-    select 1
-    from public.members m
-    where m.id = member_id
-      and (m.is_active = true or is_admin())
-  )
-);
+using (true);
 
 create policy "admin can read all trekking participations"
 on public.trekking_participations
