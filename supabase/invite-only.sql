@@ -97,6 +97,58 @@ create index if not exists balance_adjustments_created_at_idx on public.balance_
 
 alter table public.balance_adjustments enable row level security;
 
+create or replace function public.member_balance(p_member_id uuid)
+returns numeric
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select
+    coalesce(
+      (
+        select sum(c.amount)
+        from public.contributions c
+        where c.member_id = p_member_id
+      ),
+      0
+    )
+    +
+    coalesce(
+      (
+        select sum(a.amount)
+        from public.balance_adjustments a
+        where a.member_id = p_member_id
+      ),
+      0
+    );
+$$;
+
+create or replace function public.prevent_negative_balance_adjustment()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_balance numeric;
+begin
+  select public.member_balance(new.member_id) into v_balance;
+
+  if v_balance + new.amount < 0 then
+    raise exception 'Onvoldoende saldo.';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists balance_adjustments_prevent_negative on public.balance_adjustments;
+create trigger balance_adjustments_prevent_negative
+before insert on public.balance_adjustments
+for each row
+execute function public.prevent_negative_balance_adjustment();
+
 create table if not exists public.trekking_participations (
   id uuid primary key default gen_random_uuid(),
   trekking_id uuid not null references public.trekkings(id) on delete cascade,
@@ -182,6 +234,13 @@ with check (
     where m.id = member_id
       and m.user_id = auth.uid()
       and m.is_active = true
+  )
+  and (
+    request_type = 'storten'
+    or (
+      request_type = 'uitbetalen'
+      and amount <= public.member_balance(member_id)
+    )
   )
 );
 
@@ -325,6 +384,10 @@ begin
     and tp.member_id = v_member_id;
 
   if p_is_playing then
+    if v_current_is_playing is distinct from true and public.member_balance(v_member_id) < 10 then
+      raise exception 'Onvoldoende saldo om mee te spelen.';
+    end if;
+
     insert into public.trekking_participations (
       trekking_id,
       member_id,

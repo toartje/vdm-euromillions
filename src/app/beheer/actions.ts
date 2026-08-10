@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { getMemberBalance } from "@/lib/supabase/balance";
 import { requireAdmin } from "@/lib/supabase/auth";
 
 export async function markBalanceRequestHandled(formData: FormData): Promise<void> {
@@ -50,7 +51,12 @@ export async function adjustMemberBalance(formData: FormData): Promise<void> {
   }
 
   const { supabase, user } = await requireAdmin();
+  const currentBalance = await getMemberBalance(supabase, memberId);
   const signedAmount = direction === "minus" ? -amount : amount;
+
+  if (signedAmount < 0 && amount > currentBalance) {
+    redirect("/beheer?error=Dit%20lid%20heeft%20onvoldoende%20saldo.");
+  }
 
   const { error } = await supabase.from("balance_adjustments").insert({
     member_id: memberId,

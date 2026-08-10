@@ -5,6 +5,7 @@ import crypto from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { getMemberBalance } from "@/lib/supabase/balance";
 import { requireAdmin, requireViewer } from "@/lib/supabase/auth";
 
 function parseDrawDate(formData: FormData) {
@@ -104,7 +105,38 @@ export async function setTrekkingParticipation(formData: FormData): Promise<void
     redirect("/trekkingen?error=Ongeldige%20trekkingsdag.");
   }
 
-  const { supabase } = await requireViewer();
+  const { supabase, member } = await requireViewer();
+  const { data: trekking, error: trekkingError } = await supabase
+    .from("trekkings")
+    .select("id")
+    .eq("draw_date", drawDate)
+    .maybeSingle();
+
+  if (trekkingError) {
+    redirect(`/trekkingen?error=${encodeURIComponent(trekkingError.message)}`);
+  }
+
+  const { data: currentParticipation, error: participationError } = trekking
+    ? await supabase
+        .from("trekking_participations")
+        .select("is_playing")
+        .eq("trekking_id", trekking.id)
+        .eq("member_id", member.id)
+        .maybeSingle()
+    : { data: null, error: null };
+
+  if (participationError) {
+    redirect(`/trekkingen?error=${encodeURIComponent(participationError.message)}`);
+  }
+
+  if (isPlaying && currentParticipation?.is_playing !== true) {
+    const currentMemberBalance = await getMemberBalance(supabase, member.id);
+
+    if (currentMemberBalance < 10) {
+      redirect("/trekkingen?error=Je%20hebt%20onvoldoende%20saldo%20om%20mee%20te%20spelen.");
+    }
+  }
+
   const { error } = await supabase.rpc("set_trekking_participation", {
     p_draw_date: drawDate,
     p_weekday: weekday,

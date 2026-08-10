@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { getMemberBalance } from "@/lib/supabase/balance";
 import { requireViewer } from "@/lib/supabase/auth";
 
 export async function createBalanceRequest(formData: FormData): Promise<void> {
@@ -19,6 +20,11 @@ export async function createBalanceRequest(formData: FormData): Promise<void> {
   }
 
   const { supabase, member } = await requireViewer();
+  const currentBalance = await getMemberBalance(supabase, member.id);
+
+  if (requestType === "uitbetalen" && amount > currentBalance) {
+    redirect("/profiel?error=Je%20kunt%20niet%20meer%20uitbetalen%20dan%20je%20saldo.");
+  }
 
   const { error } = await supabase.from("balance_requests").insert({
     member_id: member.id,
