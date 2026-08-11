@@ -78,6 +78,11 @@ async function main() {
       path.join(bundleShimDir, "next.js"),
       `module.exports = require("next");\n`
     );
+    await mkdir(path.join(bundleShimDir, "dist"), { recursive: true });
+    await writeFile(
+      path.join(bundleShimDir, "dist", "next.js"),
+      `module.exports = require("next");\n`
+    );
   }
 
   if (await exists(distNextDir)) {
