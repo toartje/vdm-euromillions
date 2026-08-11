@@ -88,8 +88,8 @@ async function main() {
   await mkdir(distServerDir, { recursive: true });
   const rootServerSource = await readFile(path.join(distDir, "server.js"), "utf8");
   const serverSource = rootServerSource
-    .replace("module.createRequire(import.meta.url)", 'module.createRequire(path.join(process.cwd(), "server.js"))')
-    .replace("fileURLToPath(new URL('.', import.meta.url))", "process.cwd()");
+    .replace("module.createRequire(import.meta.url)", 'module.createRequire(path.join(process.cwd(), "dist", "server.js"))')
+    .replace("fileURLToPath(new URL('.', import.meta.url))", 'path.join(process.cwd(), "dist")');
   const bundleAlias = `
 const bundleNextPath = path.join(__dirname, "bundle", "next.js")
 const originalResolveFilename = module._resolveFilename
