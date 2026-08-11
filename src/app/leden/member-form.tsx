@@ -28,9 +28,10 @@ type MemberFormProps = {
   action: (formData: FormData) => void | Promise<void>;
   submitLabel: string;
   values?: MemberFormValues;
+  requireEmail?: boolean;
 };
 
-export function MemberForm({ action, submitLabel, values }: MemberFormProps) {
+export function MemberForm({ action, submitLabel, values, requireEmail = false }: MemberFormProps) {
   return (
     <form action={action} className="space-y-4 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
       {values?.id ? <input type="hidden" name="id" value={values.id} /> : null}
@@ -57,10 +58,14 @@ export function MemberForm({ action, submitLabel, values }: MemberFormProps) {
           id="email"
           name="email"
           type="email"
+          required={requireEmail}
           defaultValue={values?.email ?? ""}
           className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm outline-none transition focus:border-pool-400 focus:ring-2 focus:ring-pool-100"
           placeholder="naam@voorbeeld.be"
         />
+        {requireEmail ? (
+          <p className="mt-1 text-xs text-slate-500">Nodig om automatisch een uitnodiging te sturen.</p>
+        ) : null}
       </div>
 
       <div>

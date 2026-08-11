@@ -8,6 +8,7 @@ import { requireViewer } from "@/lib/supabase/auth";
 type LedenPageProps = {
   searchParams?: Promise<{
     added?: string;
+    invited?: string;
     updated?: string;
     deleted?: string;
     error?: string;
@@ -55,9 +56,9 @@ export default async function LedenPage({ searchParams }: LedenPageProps) {
         </div>
       ) : null}
 
-      {resolvedSearchParams?.added === "1" ? (
+      {resolvedSearchParams?.added === "1" || resolvedSearchParams?.invited === "1" ? (
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
-          Lid toegevoegd.
+          Lid toegevoegd en uitnodiging verstuurd.
         </div>
       ) : null}
 
@@ -74,7 +75,7 @@ export default async function LedenPage({ searchParams }: LedenPageProps) {
       ) : null}
 
       {isAdmin ? (
-        <MemberForm action={addMember} submitLabel="Lid toevoegen" />
+        <MemberForm action={addMember} submitLabel="Lid toevoegen" requireEmail />
       ) : null}
 
       {isAdmin && editValues ? (

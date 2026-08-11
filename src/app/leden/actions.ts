@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { createAdminClient, getSiteUrl } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export async function addMember(formData: FormData): Promise<void> {
@@ -15,8 +16,29 @@ export async function addMember(formData: FormData): Promise<void> {
     redirect("/leden?error=Vul%20een%20naam%20in.");
   }
 
-  const supabase = await createClient();
+  if (!email) {
+    redirect("/leden?error=Vul%20een%20e-mail%20in.");
+  }
+
+  const supabase = createAdminClient();
+  const redirectTo = `${getSiteUrl()}/auth/callback?next=/setup-password`;
+
+  const { data: inviteData, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email, {
+    redirectTo
+  });
+
+  if (inviteError) {
+    redirect(`/leden?error=${encodeURIComponent(inviteError.message)}`);
+  }
+
+  const invitedUserId = inviteData.user?.id;
+
+  if (!invitedUserId) {
+    redirect("/leden?error=Uitnodiging%20kon%20niet%20worden%20aangemaakt.");
+  }
+
   const { error } = await supabase.from("members").insert({
+    user_id: invitedUserId,
     full_name: fullName,
     email,
     role: role === "beheerder" ? "beheerder" : "lid",
@@ -24,12 +46,13 @@ export async function addMember(formData: FormData): Promise<void> {
   });
 
   if (error) {
+    await supabase.auth.admin.deleteUser(invitedUserId);
     redirect(`/leden?error=${encodeURIComponent(error.message)}`);
   }
 
   revalidatePath("/leden");
   revalidatePath("/beheer");
-  redirect("/leden?added=1");
+  redirect("/leden?invited=1");
 }
 
 export async function updateMember(formData: FormData): Promise<void> {
