@@ -25,7 +25,8 @@ const bundlePackageJson = JSON.stringify(
     type: "commonjs",
     main: "./next.js",
     exports: {
-      "./next": "./next.js"
+      "./next": "./next.js",
+      "./dist/next": "./next.js"
     }
   },
   null,
@@ -90,11 +91,11 @@ async function main() {
   const serverSource = rootServerSource
     .replace("module.createRequire(import.meta.url)", 'module.createRequire(path.join(process.cwd(), "dist", "server.js"))')
     .replace("fileURLToPath(new URL('.', import.meta.url))", 'path.join(process.cwd(), "dist")');
-  const bundleAlias = `
+const bundleAlias = `
 const bundleNextPath = path.join(__dirname, "bundle", "next.js")
 const originalResolveFilename = module._resolveFilename
 module._resolveFilename = function (request, parent, isMain, options) {
-  if (request === "bundle/next") {
+  if (request === "bundle/next" || request === "bundle/dist/next") {
     return bundleNextPath
   }
 
