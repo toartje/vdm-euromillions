@@ -1,13 +1,12 @@
 "use client";
 
 import type { EmailOtpType } from "@supabase/supabase-js";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { createClient } from "@/lib/supabase/client";
 
 export default function AuthCallbackClient() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
 
@@ -21,13 +20,38 @@ export default function AuthCallbackClient() {
       const code = searchParams.get("code");
       const tokenHash = searchParams.get("token_hash");
       const type = searchParams.get("type");
+      const hashParams = new URLSearchParams(window.location.hash.startsWith("#") ? window.location.hash.slice(1) : "");
+      const accessToken = hashParams.get("access_token");
+      const refreshToken = hashParams.get("refresh_token");
+      const hashError = hashParams.get("error_description") ?? hashParams.get("error");
 
       if (code) {
         const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
         if (exchangeError) {
           throw exchangeError;
         }
-      } else if (tokenHash && type) {
+        if (!cancelled) {
+          window.location.replace(nextPath);
+        }
+        return;
+      }
+
+      if (accessToken && refreshToken) {
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken
+        });
+
+        if (sessionError) {
+          throw sessionError;
+        }
+        if (!cancelled) {
+          window.location.replace(nextPath);
+        }
+        return;
+      }
+
+      if (tokenHash && type) {
         const { error: verifyError } = await supabase.auth.verifyOtp({
           token_hash: tokenHash,
           type: type as EmailOtpType
@@ -36,16 +60,14 @@ export default function AuthCallbackClient() {
         if (verifyError) {
           throw verifyError;
         }
-      }
-
-      const { data } = await supabase.auth.getSession();
-
-      if (cancelled) {
+        if (!cancelled) {
+          window.location.replace(nextPath);
+        }
         return;
       }
 
-      if (data.session) {
-        router.replace(nextPath);
+      if (hashError) {
+        setError(decodeURIComponent(hashError.replace(/\+/g, " ")));
         return;
       }
 
@@ -63,13 +85,12 @@ export default function AuthCallbackClient() {
     return () => {
       cancelled = true;
     };
-  }, [nextPath, router, searchParams]);
+  }, [nextPath, searchParams]);
 
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-10 text-slate-900">
       <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-md flex-col justify-center">
         <div className="rounded-3xl bg-white p-6 text-center shadow-soft ring-1 ring-slate-200">
-          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-pool-700">LuckyPool</p>
           <h1 className="mt-3 text-2xl font-bold tracking-tight">Uitnodiging verwerken</h1>
           <p className="mt-2 text-sm text-slate-600">Even geduld, we zetten je account klaar.</p>
 

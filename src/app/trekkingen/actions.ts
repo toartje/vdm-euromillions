@@ -90,6 +90,34 @@ function parseBooleanField(formData: FormData, name: string) {
   return value === "true" || value === "on" || value === "1";
 }
 
+async function pruneCompletedTrekkings(
+  supabase: Awaited<ReturnType<typeof requireAdmin>>["supabase"]
+) {
+  const { data: completedTrekkings, error } = await supabase
+    .from("trekkings")
+    .select("id")
+    .in("status", ["resultaat_ingevuld", "verwerkt"])
+    .order("draw_date", { ascending: false })
+    .range(4, 1000);
+
+  if (error) {
+    console.error("Kon afgeronde trekkingen niet beperken.", error);
+    return;
+  }
+
+  const idsToDelete = (completedTrekkings ?? []).map((trekking) => trekking.id);
+
+  if (!idsToDelete.length) {
+    return;
+  }
+
+  const { error: deleteError } = await supabase.from("trekkings").delete().in("id", idsToDelete);
+
+  if (deleteError) {
+    console.error("Kon oude afgeronde trekkingen niet verwijderen.", deleteError);
+  }
+}
+
 export async function setTrekkingParticipation(formData: FormData): Promise<void> {
   const drawDate = parseDrawDate(formData);
   const weekday = parseWeekday(formData);
@@ -400,10 +428,11 @@ export async function saveTrekkingResult(formData: FormData): Promise<void> {
     redirect(`/trekkingen?error=${encodeURIComponent(error.message)}`);
   }
 
+  await pruneCompletedTrekkings(supabase);
   revalidatePath("/trekkingen");
   revalidatePath("/beheer");
   revalidatePath("/profiel");
   redirect(
-    `/trekkingen?date=${encodeURIComponent(drawDate)}&result=1${distributeWinnings ? "&distributed=1" : ""}`
+    `/trekkingen?date=${encodeURIComponent(drawDate)}&completed=1${distributeWinnings ? "&distributed=1" : ""}`
   );
 }

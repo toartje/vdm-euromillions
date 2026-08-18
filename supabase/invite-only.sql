@@ -91,12 +91,35 @@ create table if not exists public.balance_adjustments (
   id uuid primary key default gen_random_uuid(),
   member_id uuid not null references public.members(id) on delete cascade,
   amount numeric(10,2) not null check (amount <> 0),
+  action_type text,
+  trekking_id uuid,
   created_by uuid references auth.users(id) on delete set null,
   created_at timestamptz not null default now()
 );
 
+alter table public.balance_adjustments
+  add column if not exists action_type text;
+
+alter table public.balance_adjustments
+  add column if not exists trekking_id uuid;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'balance_adjustments_trekking_id_fkey'
+  ) then
+    alter table public.balance_adjustments
+      add constraint balance_adjustments_trekking_id_fkey
+      foreign key (trekking_id) references public.trekkings(id) on delete set null;
+  end if;
+end $$;
+
 create index if not exists balance_adjustments_member_id_idx on public.balance_adjustments (member_id);
 create index if not exists balance_adjustments_created_at_idx on public.balance_adjustments (created_at);
+create index if not exists balance_adjustments_trekking_id_idx on public.balance_adjustments (trekking_id);
+create index if not exists balance_adjustments_action_type_idx on public.balance_adjustments (action_type);
 
 alter table public.balance_adjustments enable row level security;
 
@@ -411,8 +434,20 @@ begin
           left_at = null;
 
     if v_current_is_playing is distinct from true then
-      insert into public.balance_adjustments (member_id, amount, created_by)
-      values (v_member_id, -10.00, auth.uid());
+      insert into public.balance_adjustments (
+        member_id,
+        amount,
+        action_type,
+        trekking_id,
+        created_by
+      )
+      values (
+        v_member_id,
+        -10.00,
+        'inschrijven_trekking',
+        v_trekking_id,
+        auth.uid()
+      );
     end if;
   else
     if v_current_is_playing = true then
@@ -422,8 +457,8 @@ begin
       where trekking_id = v_trekking_id
         and member_id = v_member_id;
 
-      insert into public.balance_adjustments (member_id, amount, created_by)
-      values (v_member_id, 10.00, auth.uid());
+      insert into public.balance_adjustments (member_id, amount, action_type, trekking_id, created_by)
+      values (v_member_id, 10.00, 'uitschrijven_trekking', v_trekking_id, auth.uid());
     end if;
   end if;
 end;
@@ -534,10 +569,18 @@ begin
         and tp.is_playing = true
       order by tp.joined_at, tp.member_id
     loop
-      insert into public.balance_adjustments (member_id, amount, created_by)
+      insert into public.balance_adjustments (
+        member_id,
+        amount,
+        action_type,
+        trekking_id,
+        created_by
+      )
       values (
         v_participant.member_id,
         ((v_share_cents + case when v_participant.rn <= v_remainder then 1 else 0 end)::numeric / 100),
+        'winst',
+        v_trekking_id,
         auth.uid()
       );
     end loop;

@@ -61,6 +61,7 @@ export async function adjustMemberBalance(formData: FormData): Promise<void> {
   const { error } = await supabase.from("balance_adjustments").insert({
     member_id: memberId,
     amount: signedAmount,
+    action_type: direction === "plus" ? "storten" : "uitbetalen",
     created_by: user.id
   });
 

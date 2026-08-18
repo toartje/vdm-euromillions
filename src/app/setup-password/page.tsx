@@ -9,7 +9,6 @@ export default function SetupPasswordPage() {
   const [saving, setSaving] = useState(false);
   const [email, setEmail] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -81,7 +80,6 @@ export default function SetupPasswordPage() {
         throw updateError;
       }
 
-      setSuccess(true);
       window.location.href = "/";
     } catch (submissionError) {
       setError(
@@ -96,7 +94,6 @@ export default function SetupPasswordPage() {
     <div className="min-h-screen bg-slate-50 px-4 py-10 text-slate-900">
       <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-md flex-col justify-center">
         <div className="mb-6">
-          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-pool-700">LuckyPool</p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight">Wachtwoord instellen</h1>
           <p className="mt-2 text-sm text-slate-600">
             {email ? `Welkom ${email}. Kies je eigen wachtwoord.` : "Kies je eigen wachtwoord voor je account."}
@@ -140,12 +137,6 @@ export default function SetupPasswordPage() {
 
           {error ? (
             <div className="rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">{error}</div>
-          ) : null}
-
-          {success ? (
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
-              Wachtwoord ingesteld.
-            </div>
           ) : null}
 
           <button

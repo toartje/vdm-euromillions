@@ -74,9 +74,7 @@ export default async function LedenPage({ searchParams }: LedenPageProps) {
         </div>
       ) : null}
 
-      {isAdmin ? (
-        <MemberForm action={addMember} submitLabel="Lid toevoegen" requireEmail />
-      ) : null}
+      {isAdmin ? <MemberForm action={addMember} submitLabel="Lid toevoegen" requireEmail /> : null}
 
       {isAdmin && editValues ? (
         <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">

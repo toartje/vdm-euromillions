@@ -1,7 +1,3 @@
-"use client";
-
-import { useFormStatus } from "react-dom";
-
 export type MemberFormValues = {
   id?: string;
   full_name?: string;
@@ -9,20 +5,6 @@ export type MemberFormValues = {
   role?: "lid" | "beheerder";
   is_active?: boolean;
 };
-
-function SubmitButton({ label }: { label: string }) {
-  const { pending } = useFormStatus();
-
-  return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="w-full rounded-2xl bg-pool-700 px-4 py-3 text-sm font-semibold text-white transition hover:bg-pool-800 disabled:cursor-not-allowed disabled:opacity-60"
-    >
-      {pending ? "Bezig..." : label}
-    </button>
-  );
-}
 
 type MemberFormProps = {
   action: (formData: FormData) => void | Promise<void>;
@@ -97,7 +79,12 @@ export function MemberForm({ action, submitLabel, values, requireEmail = false }
         </label>
       ) : null}
 
-      <SubmitButton label={submitLabel} />
+      <button
+        type="submit"
+        className="w-full rounded-2xl bg-pool-700 px-4 py-3 text-sm font-semibold text-white transition hover:bg-pool-800"
+      >
+        {submitLabel}
+      </button>
     </form>
   );
 }

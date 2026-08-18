@@ -21,7 +21,7 @@ type TrekkingenPageProps = {
     closed?: string;
     reopened?: string;
     reset?: string;
-    result?: string;
+    completed?: string;
     distributed?: string;
     error?: string;
   }>;
@@ -44,6 +44,12 @@ type ParticipationRow = {
   is_playing: boolean;
   joined_at: string;
   left_at: string | null;
+};
+
+type MemberRow = {
+  id: string;
+  full_name: string;
+  email: string;
 };
 
 function formatDate(value: string) {
@@ -147,6 +153,14 @@ function formatWinningStars(stars: number[] | null | undefined) {
   return stars.join(", ");
 }
 
+function getHeroTrekkingLabel(status: TrekkingRow["status"], isPastDate: boolean) {
+  if (status !== "open") {
+    return "Afgeronde trekking";
+  }
+
+  return isPastDate ? "Afgelopen trekking" : "Volgende trekking";
+}
+
 export default async function TrekkingenPage({ searchParams }: TrekkingenPageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const { member, supabase } = await requireViewer();
@@ -155,20 +169,37 @@ export default async function TrekkingenPage({ searchParams }: TrekkingenPagePro
   const requestedDate = parseDateKey(resolvedSearchParams?.date);
   const selectedDate = requestedDate && isTrekkingDay(requestedDate) ? requestedDate : getNextTrekkingDate();
   const selectedDateKey = toDateKey(selectedDate);
+  const todayKey = toDateKey(new Date());
+  const selectedDateIsPast = selectedDateKey < todayKey;
   const previousDate = getAdjacentTrekkingDate(selectedDate, -1);
   const nextDate = getAdjacentTrekkingDate(selectedDate, 1);
   const weekdayLabel = getWeekdayLabel(selectedDate);
 
-  const { data: trekkingRow, error: trekkingError } = await supabase
-    .from("trekkings")
-    .select(
-      "id, draw_date, weekday, status, winning_numbers, winning_stars, total_prize, bought_ticket_image_url, payout_ticket_image_url"
-    )
-    .eq("draw_date", selectedDateKey)
-    .maybeSingle();
+  const [
+    { data: trekkingRow, error: trekkingError },
+    { data: completedTrekkings, error: completedTrekkingsError }
+  ] = await Promise.all([
+    supabase
+      .from("trekkings")
+      .select(
+        "id, draw_date, weekday, status, winning_numbers, winning_stars, total_prize, bought_ticket_image_url, payout_ticket_image_url"
+      )
+      .eq("draw_date", selectedDateKey)
+      .maybeSingle(),
+    supabase
+      .from("trekkings")
+      .select("id, draw_date, weekday, status, winning_numbers, winning_stars, total_prize")
+      .in("status", ["resultaat_ingevuld", "verwerkt"])
+      .order("draw_date", { ascending: false })
+      .limit(4)
+  ]);
 
   if (trekkingError) {
     throw trekkingError;
+  }
+
+  if (completedTrekkingsError) {
+    throw completedTrekkingsError;
   }
 
   const trekking = trekkingRow as TrekkingRow | null;
@@ -190,17 +221,40 @@ export default async function TrekkingenPage({ searchParams }: TrekkingenPagePro
   const playingCount = participationRows.filter((row) => row.is_playing).length;
   const participationLocked = (trekking?.status ?? "open") !== "open";
 
+  const { data: membersForAdmin, error: membersForAdminError } = isAdmin
+    ? await supabase.from("members").select("id, full_name, email").order("full_name")
+    : { data: [], error: null };
+
+  if (membersForAdminError) {
+    throw membersForAdminError;
+  }
+
+  const membersById = new Map(
+    ((membersForAdmin ?? []) as MemberRow[]).map((memberRow) => [memberRow.id, memberRow])
+  );
+  const participatingMembers = isAdmin
+    ? participationRows
+        .filter((row) => row.is_playing)
+        .map((row) => membersById.get(row.member_id))
+        .filter((participant): participant is MemberRow => Boolean(participant))
+    : [];
+
   const currentPrize = trekking?.total_prize == null ? null : Number(trekking.total_prize);
   const boughtTicketImageUrl = trekking?.bought_ticket_image_url ?? "";
   const payoutTicketImageUrl = trekking?.payout_ticket_image_url ?? "";
   const hasWinningNumbers = (trekking?.winning_numbers?.length ?? 0) === 5;
   const hasWinningStars = (trekking?.winning_stars?.length ?? 0) === 2;
   const canEnterPrize = hasWinningNumbers && hasWinningStars;
+  const heroLabel = getHeroTrekkingLabel(trekking?.status ?? "open", selectedDateIsPast);
+  const showCompletionMessage = resolvedSearchParams?.completed === "1";
+  const oldestVisibleCompletedDate = completedTrekkings?.at(-1)?.draw_date ?? null;
+  const canGoBackFurther = !oldestVisibleCompletedDate || selectedDateKey > oldestVisibleCompletedDate;
+  const previousHref = canGoBackFurther ? `/trekkingen?date=${toDateKey(previousDate)}` : null;
 
   return (
     <PageShell
       title="Trekkingen"
-      subtitle="Hier zie je de volgende trekking en kan je je deelname aan of uit zetten."
+      subtitle="Hier zie je de trekking en kan je je deelname aan of uit zetten."
     >
       {resolvedSearchParams?.error ? (
         <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">
@@ -232,9 +286,9 @@ export default async function TrekkingenPage({ searchParams }: TrekkingenPagePro
         </div>
       ) : null}
 
-      {resolvedSearchParams?.result === "1" ? (
+      {showCompletionMessage ? (
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
-          Resultaat opgeslagen.
+          Trekking afgerond.
         </div>
       ) : null}
 
@@ -245,14 +299,20 @@ export default async function TrekkingenPage({ searchParams }: TrekkingenPagePro
       ) : null}
 
       <section className="rounded-3xl bg-gradient-to-br from-pool-600 to-sky-700 p-5 text-white shadow-soft">
-        <p className="text-sm font-medium uppercase tracking-[0.24em] text-pool-100">Volgende trekking</p>
+        <p className="text-sm font-medium uppercase tracking-[0.24em] text-pool-100">{heroLabel}</p>
         <div className="mt-3 flex items-center justify-between gap-3">
-          <Link
-            href={`/trekkingen?date=${toDateKey(previousDate)}`}
-            className="rounded-full border border-white/25 bg-white/10 px-3 py-2 text-sm font-semibold text-white transition hover:bg-white/20"
-          >
-            ← Vorige
-          </Link>
+          {previousHref ? (
+            <Link
+              href={previousHref}
+              className="rounded-full border border-white/25 bg-white/10 px-3 py-2 text-sm font-semibold text-white transition hover:bg-white/20"
+            >
+              ← Vorige
+            </Link>
+          ) : (
+            <span className="rounded-full border border-white/15 bg-white/5 px-3 py-2 text-sm font-semibold text-white/50">
+              ← Vorige
+            </span>
+          )}
           <div className="text-center">
             <h2 className="text-xl font-bold sm:text-2xl">{formatDate(selectedDateKey)}</h2>
             <p className="mt-1 text-sm text-sky-50/90">
@@ -277,7 +337,7 @@ export default async function TrekkingenPage({ searchParams }: TrekkingenPagePro
           </div>
           <div className="rounded-xl bg-slate-50 p-3">
             <p className="text-xs uppercase tracking-wide text-slate-500">Deelnemers</p>
-            <p className="mt-1 text-sm font-medium text-slate-900">{playingCount} actief</p>
+            <p className="mt-1 text-sm font-medium text-slate-900">{playingCount} ingeschreven</p>
           </div>
           <div className="rounded-xl bg-slate-50 p-3">
             <p className="text-xs uppercase tracking-wide text-slate-500">Winnende nummers</p>
@@ -295,6 +355,36 @@ export default async function TrekkingenPage({ searchParams }: TrekkingenPagePro
           </div>
         </div>
       </section>
+
+      {isAdmin ? (
+        <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+          <p className="text-sm font-semibold text-slate-900">Ingeschreven leden</p>
+          <p className="mt-1 text-sm text-slate-600">
+            Dit overzicht is enkel zichtbaar voor de beheerder, zodat je later kan controleren wie meedeed.
+          </p>
+
+          <div className="mt-3 rounded-xl bg-slate-50 p-3">
+            <p className="text-sm font-medium text-slate-900">
+              {participatingMembers.length
+                ? `${participatingMembers.length} ${participatingMembers.length === 1 ? "lid" : "leden"} spelen mee.`
+                : "Nog geen leden ingeschreven voor deze trekking."}
+            </p>
+
+            {participatingMembers.length ? (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {participatingMembers.map((participant) => (
+                  <span
+                    key={participant.id}
+                    className="rounded-full bg-sky-100 px-3 py-1 text-xs font-medium text-sky-800"
+                  >
+                    {participant.full_name}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
 
       <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
         <p className="text-sm font-semibold text-slate-900">Trekkingfoto&apos;s</p>
