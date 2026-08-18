@@ -102,8 +102,8 @@ export function TrekkingPhotoForm({
     <div>
       <p className="text-sm font-semibold text-slate-900">Beheer: foto&apos;s</p>
       <p className="mt-1 text-sm text-slate-600">
-        Voeg hier een foto toe van de aangekochte lotjes of van de lotjes bij uitbetaling. Op gsm kan je meteen
-        een foto nemen via de camera.
+        Voeg hier een foto toe van de aangekochte lotjes of van de lotjes bij uitbetaling. Op gsm kan je kiezen
+        tussen de camera of een foto uit je galerij.
       </p>
 
       {error ? (
@@ -117,7 +117,6 @@ export function TrekkingPhotoForm({
             name="bought_ticket_image"
             type="file"
             accept="image/*"
-            capture="environment"
             onChange={(event) => {
               const file = event.currentTarget.files?.[0];
               setBoughtPreview(file ? URL.createObjectURL(file) : null);
@@ -132,7 +131,6 @@ export function TrekkingPhotoForm({
             name="payout_ticket_image"
             type="file"
             accept="image/*"
-            capture="environment"
             onChange={(event) => {
               const file = event.currentTarget.files?.[0];
               setPayoutPreview(file ? URL.createObjectURL(file) : null);
